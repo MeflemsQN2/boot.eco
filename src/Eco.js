@@ -345,6 +345,34 @@ class EconomyManager {
     }
 
     /**
+     * Mining reward
+     * @param {string} userID User id
+     * @param {string} guildID Guild id
+     * @param {number} amount Custom Amount
+     * @param {object} ops Options
+     * @param {number[]} [ops.range] Amount range
+     * @param {number} [ops.timeout] Timeout
+     * @returns {Promise<RewardData>}
+     */
+    async mining(userID, guildID = false, amount, ops = { range: [], timeout: 0 }) {
+        this.__checkManager();
+
+        if (!userID || typeof userID !== "string") throw new Error("User id was not provided!");
+        if (!amount) amount = Util.random(ops.range[0] || 1000, ops.range[1] || 5000);
+
+        const key = Util.makeKey(userID, guildID, "mining");
+        const cooldownRaw = await this._get(key);
+        const cooldown = Util.onCooldown(ops.timeout || Util.COOLDOWN.MINING, cooldownRaw ? cooldownRaw.data : 0);
+
+        if (cooldown) return { cooldown: true, time: Util.getCooldown(ops.timeout || Util.COOLDOWN.MINING, cooldownRaw ? cooldownRaw.data : 0) };
+
+        const newAmount = await this.addMoney(userID, guildID, amount);
+        await this._set(key, Date.now());
+
+        return { cooldown: false, time: null, amount, money: newAmount };
+    }
+
+    /**
      * @typedef {object} JobData
      * @property {boolean} cooldown If the user is on cooldown
      * @property {MS?} time Cooldown time
